@@ -1,5 +1,7 @@
 package com.example.myapplication
 
+import android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+import android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.launchActivity
 import androidx.test.espresso.Espresso.*
@@ -10,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.lang.Thread.sleep
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -38,6 +41,15 @@ class NavigationTest {
         openAbout()
         onView(withId(R.id.activity_about)).check(matches(isDisplayed()))
         pressBack()
+        onView(withId(listOfFrag[i])).check(matches(isDisplayed()))
+
+    }
+
+    private fun openAboutAndPressUp(i: Int) {
+
+        openAbout()
+        onView(withId(R.id.activity_about)).check(matches(isDisplayed()))
+        onView(withContentDescription(R.string.nav_app_bar_navigate_up_description)).perform(click())
         onView(withId(listOfFrag[i])).check(matches(isDisplayed()))
 
     }
@@ -88,11 +100,11 @@ class NavigationTest {
         fromTo(1, 3)
         onView(withId(listOfFrag[2])).check(matches(isDisplayed()))
 
-        // Нажимаем на кнопку bnToSecond-->Проверяем, что находимся в фр2
+        // Нажимаем на кнопку bnToSecond->Проверяем, что находимся в фр2
         fromTo(3, 2)
         onView(withId(listOfFrag[1])).check(matches(isDisplayed()))
 
-        // Нажимаем на кнопку bnToFirst-->Проверяем, что находимся в фр1
+        // Нажимаем на кнопку bnToFirst->Проверяем, что находимся в фр1
         fromTo(2, 1)
         onView(withId(listOfFrag[0])).check(matches(isDisplayed()))
 
@@ -186,16 +198,29 @@ class NavigationTest {
 
     @Test
     fun testRecreate() {
-        val act = launchActivity<MainActivity>()
+        var act = launchActivity<MainActivity>()
 
         // Проверка фр1, вложеннх вью: 1
+        // Проверка About
         act.recreate()
         onView(withId(R.id.activity_main)).check(matches(isDisplayed()))
         onView(withId(listOfFrag[0])).check(matches(isDisplayed()))
         onView(withId(listOfFrag[0])).check(matches(hasChildCount(1)))
         onView(withId(listOfBut[0])).check(matches(isDisplayed()))
+        openAbout()
+        act.onActivity { activity ->
+            activity.requestedOrientation = SCREEN_ORIENTATION_LANDSCAPE
+        }
+        sleep(1000)
+        onView(withId(R.id.activity_about)).check(matches(isDisplayed()))
+        onView(withId(R.id.tvAbout)).check(matches(isDisplayed()))
+        onView(withContentDescription(R.string.nav_app_bar_navigate_up_description)).perform(click())
+        onView(withId(listOfFrag[0])).check(matches(isDisplayed()))
+
 
         // Проверка фр2, вложеннх вью: 2
+        // Проверка About
+        act = launchActivity()
         fromTo(1, 2)
         act.recreate()
         onView(withId(R.id.activity_main)).check(matches(isDisplayed()))
@@ -203,8 +228,20 @@ class NavigationTest {
         onView(withId(listOfFrag[1])).check(matches(hasChildCount(2)))
         onView(withId(listOfBut[1])).check(matches(isDisplayed()))
         onView(withId(listOfBut[2])).check(matches(isDisplayed()))
+        openAbout()
+        act.onActivity { activity ->
+            activity.requestedOrientation = SCREEN_ORIENTATION_LANDSCAPE
+        }
+        sleep(1000)
+        onView(withId(R.id.activity_about)).check(matches(isDisplayed()))
+        onView(withId(R.id.tvAbout)).check(matches(isDisplayed()))
+        pressBack()
+        onView(withId(listOfFrag[1])).check(matches(isDisplayed()))
 
         // Проверка фр3, вложеннх вью: 2
+        act = launchActivity()
+        onView(withId(listOfFrag[0])).check(matches(isDisplayed()))
+        fromTo(1, 2)
         fromTo(2, 3)
         act.recreate()
         onView(withId(R.id.activity_main)).check(matches(isDisplayed()))
@@ -212,6 +249,73 @@ class NavigationTest {
         onView(withId(listOfFrag[2])).check(matches(hasChildCount(2)))
         onView(withId(listOfBut[3])).check(matches(isDisplayed()))
         onView(withId(listOfBut[4])).check(matches(isDisplayed()))
+
+    }
+
+    @Test
+    fun testPressBack() {
+
+        launchActivity<MainActivity>()
+
+        // Переход: фр1->About->фр1
+        openAboutAndPressBack(0)
+
+        // Переход: фр1->фр2->фр1->фр2->About
+        fromTo(1, 2)
+        onView(withId(listOfFrag[1])).check(matches(isDisplayed()))
+        pressBack()
+        onView(withId(listOfFrag[0])).check(matches(isDisplayed()))
+        fromTo(1, 2)
+        openAboutAndPressBack(1)
+
+        // Переход: фр2->фр3->фр2->фр3->About
+        fromTo(2, 3)
+        onView(withId(listOfFrag[2])).check(matches(isDisplayed()))
+        pressBack()
+        onView(withId(listOfFrag[1])).check(matches(isDisplayed()))
+        fromTo(2, 3)
+        openAboutAndPressBack(2)
+
+        // Переход: фр3->фр2->фр1
+        onView(withId(listOfFrag[2])).check(matches(isDisplayed()))
+        pressBack()
+        onView(withId(listOfFrag[1])).check(matches(isDisplayed()))
+        pressBack()
+        onView(withId(listOfFrag[0])).check(matches(isDisplayed()))
+
+    }
+
+    @Test
+    fun testPressUp() {
+
+        launchActivity<MainActivity>()
+        val upButton = onView(withContentDescription(R.string.nav_app_bar_navigate_up_description))
+
+        // Переход: фр1->About->фр1
+        openAboutAndPressUp(0)
+
+        // Переход: фр1->фр2->фр1->фр2->About
+        fromTo(1, 2)
+        onView(withId(listOfFrag[1])).check(matches(isDisplayed()))
+        upButton.perform(click())
+        onView(withId(listOfFrag[0])).check(matches(isDisplayed()))
+        fromTo(1, 2)
+        openAboutAndPressUp(1)
+
+        // Переход: фр2->фр3->фр2->фр3->About
+        fromTo(2, 3)
+        onView(withId(listOfFrag[2])).check(matches(isDisplayed()))
+        upButton.perform(click())
+        onView(withId(listOfFrag[1])).check(matches(isDisplayed()))
+        fromTo(2, 3)
+        openAboutAndPressUp(2)
+
+        // Переход: фр3->фр2->фр1
+        onView(withId(listOfFrag[2])).check(matches(isDisplayed()))
+        upButton.perform(click())
+        onView(withId(listOfFrag[1])).check(matches(isDisplayed()))
+        upButton.perform(click())
+        onView(withId(listOfFrag[0])).check(matches(isDisplayed()))
 
     }
 
